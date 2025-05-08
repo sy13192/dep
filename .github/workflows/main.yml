@@ -36,29 +36,30 @@ jobs:
           echo "IMAGE_TAG=${{ github.run_number }}" >> $GITHUB_ENV
           echo "GIT_EMAIL=sy13192@naver.com" >> $GITHUB_ENV
           echo "GIT_NAME=sy13192" >> $GITHUB_ENV
+
       - name: Docker Image Build
-        id: build-image
         run: |
-          docker build -t ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} .
-      - name: Docker image Push
-        id: push-image
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+
+      - name: Docker Image Push
         run: |
-          docker push ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
       - name: Checkout Deployment Repository
         uses: actions/checkout@v4
         with:
-          repository: sy13192/dep #본인에 맞게 수정
-          ref: main  # branch
+          repository: sy13192/dep
+          ref: main
           token: ${{ secrets.GH_TOKEN }}
-      - name: k8s manifest update
+
+      - name: Update K8s manifest
         run: |
-          sed -i "s@ \
-          image: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:.*@ \
-          image: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}@g" deploy.yml
+          sed -i "s|image: .*/.*/.*|image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|g" deploy.yml
+
       - name: Commit and Push
         run: |
-          git config user.email ${{ env.GIT_EMAIL }}
-          git config user.name ${{ env.GIT_NAME }}
+          git config user.email "$GIT_EMAIL"
+          git config user.name "$GIT_NAME"
           git add deploy.yml
-          git commit -m "Update image tag"
+          git commit -m "Update image tag to $IMAGE_TAG" || echo "No changes to commit"
           git push origin main
